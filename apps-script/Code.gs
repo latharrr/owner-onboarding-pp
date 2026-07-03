@@ -23,8 +23,8 @@
  * ============================================================
  */
 
-const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE';
-const SHARED_SECRET = 'YOUR_SHARED_SECRET_HERE';
+const SPREADSHEET_ID = '1rJOugosaV9MT-Sdl2adNhDIHcX2Y4E4R-hY6YeZH2YY';
+const SHARED_SECRET = 'ca9f96b27e80d440ef42d20fae319bf1893c5240f925b306b9ef20e7de647895';
 
 // ── Sheet names ───────────────────────────────────────────────
 const SHEETS = {
