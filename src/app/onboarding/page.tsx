@@ -161,10 +161,13 @@ export default function ConsolidatedOnboardingPage() {
           count: 10,
           rentPerBed: 6000,
           deposit: 6000,
+          lockInPeriod: 1,
         },
       ],
       amenities: ['wifi', 'power_backup', 'cctv', 'parking_two_wheeler', 'housekeeping'],
       foodProvided: false,
+      mealsPerDay: 3,
+      mealsList: ['breakfast', 'lunch', 'dinner'],
       mealType: 'none',
       mealIncluded: false,
       mealCost: 0,
@@ -229,6 +232,7 @@ export default function ConsolidatedOnboardingPage() {
         count: 5,
         rentPerBed: 8000,
         deposit: 8000,
+        lockInPeriod: 1,
       },
     ];
     setProperties(updated);
@@ -700,24 +704,24 @@ export default function ConsolidatedOnboardingPage() {
                     </select>
                   </div>
 
-                  {/* Config rates */}
-                  <div className="grid grid-cols-3 gap-3">
+                   {/* Config rates */}
+                  <div className="grid grid-cols-4 gap-2">
                     <div className="flex flex-col gap-1">
-                      <Label className="text-[10px] text-gray-400 font-bold">Room Count</Label>
+                      <Label className="text-[10px] text-gray-400 font-bold">Rooms</Label>
                       <Input
                         type="number"
                         value={config.count}
                         onChange={(e) => updateRoomConfigField(pIndex, cIndex, 'count', Number(e.target.value))}
-                        className="h-9 rounded-lg px-2 text-xs"
+                        className="h-9 rounded-lg px-1.5 text-xs text-center"
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <Label className="text-[10px] text-gray-400 font-bold">Rent / Bed</Label>
+                      <Label className="text-[10px] text-gray-400 font-bold">Rent/Bed</Label>
                       <Input
                         type="number"
                         value={config.rentPerBed}
                         onChange={(e) => updateRoomConfigField(pIndex, cIndex, 'rentPerBed', Number(e.target.value))}
-                        className="h-9 rounded-lg px-2 text-xs"
+                        className="h-9 rounded-lg px-1.5 text-xs text-center"
                       />
                     </div>
                     <div className="flex flex-col gap-1">
@@ -726,7 +730,16 @@ export default function ConsolidatedOnboardingPage() {
                         type="number"
                         value={config.deposit}
                         onChange={(e) => updateRoomConfigField(pIndex, cIndex, 'deposit', Number(e.target.value))}
-                        className="h-9 rounded-lg px-2 text-xs"
+                        className="h-9 rounded-lg px-1.5 text-xs text-center"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-[10px] text-gray-400 font-bold">Lock-in (M)</Label>
+                      <Input
+                        type="number"
+                        value={config.lockInPeriod ?? 1}
+                        onChange={(e) => updateRoomConfigField(pIndex, cIndex, 'lockInPeriod', Number(e.target.value))}
+                        className="h-9 rounded-lg px-1.5 text-xs text-center"
                       />
                     </div>
                   </div>
@@ -774,6 +787,69 @@ export default function ConsolidatedOnboardingPage() {
                 onCheckedChange={(checked) => updatePropertyField(pIndex, 'foodProvided', checked)}
               />
             </div>
+
+            {prop.foodProvided && (
+              <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50/50 flex flex-col gap-4">
+                {/* Number of meals */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-gray-700">Meals per Day</p>
+                    <p className="text-[10px] text-gray-400">Total count of daily meals</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updatePropertyField(pIndex, 'mealsPerDay', Math.max(1, (prop.mealsPerDay ?? 3) - 1))}
+                      className="w-8 h-8 rounded-lg bg-white border flex items-center justify-center font-bold text-gray-600"
+                    >
+                      -
+                    </button>
+                    <span className="w-6 text-center text-sm font-bold">{prop.mealsPerDay ?? 3}</span>
+                    <button
+                      type="button"
+                      onClick={() => updatePropertyField(pIndex, 'mealsPerDay', (prop.mealsPerDay ?? 3) + 1)}
+                      className="w-8 h-8 rounded-lg bg-white border flex items-center justify-center font-bold text-gray-600"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Specific meals selection options */}
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-gray-500 font-bold">Meals Included</Label>
+                  <div className="flex gap-2">
+                    {[
+                      { id: 'breakfast', label: 'Breakfast 🍳' },
+                      { id: 'lunch', label: 'Lunch 🍱' },
+                      { id: 'dinner', label: 'Dinner 🍛' },
+                    ].map((meal) => {
+                      const list = prop.mealsList ?? ['breakfast', 'lunch', 'dinner'];
+                      const active = list.includes(meal.id);
+                      return (
+                        <button
+                          key={meal.id}
+                          type="button"
+                          onClick={() => {
+                            const next = active
+                              ? list.filter((item: string) => item !== meal.id)
+                              : [...list, meal.id];
+                            updatePropertyField(pIndex, 'mealsList', next);
+                          }}
+                          className={`flex-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                            active
+                              ? 'bg-brand text-white border-brand'
+                              : 'bg-white text-gray-600 border-gray-200'
+                          }`}
+                        >
+                          {meal.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* House Rules Toggles */}
             <div className="flex flex-col gap-2">

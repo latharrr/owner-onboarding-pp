@@ -18,6 +18,7 @@ export const AMENITIES: AmenityOption[] = [
   { id: 'geyser', label: 'Geyser', icon: '🚿', category: 'comfort' },
   { id: 'furnished', label: 'Furnished', icon: '🛋️', category: 'comfort' },
   { id: 'attached_bathroom', label: 'Attached Bath', icon: '🚽', category: 'comfort' },
+  { id: 'pantry', label: 'Pantry', icon: '🍽️', category: 'comfort' },
   { id: 'washing_machine', label: 'Washing Machine', icon: '🫧', category: 'lifestyle' },
   { id: 'laundry', label: 'Laundry Service', icon: '👕', category: 'lifestyle' },
   // Security

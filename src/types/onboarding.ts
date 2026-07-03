@@ -75,6 +75,7 @@ export interface RoomConfig {
   count: number;
   rentPerBed: number;
   deposit: number;
+  lockInPeriod?: number;   // months
 }
 
 // ── Property ─────────────────────────────────────────────────
@@ -109,6 +110,8 @@ export interface Property {
   mealType: MealType;
   mealIncluded: boolean;
   mealCost?: number;
+  mealsPerDay?: number;
+  mealsList?: string[];
 
   // Rules
   noSmoking: boolean;

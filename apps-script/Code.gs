@@ -47,7 +47,7 @@ const HEADERS = {
     'propertyId', 'displayId', 'ownerId', 'ownerDisplayId',
     'name', 'address', 'locality', 'city', 'pincode', 'googleMapsLink',
     'pgType', 'totalRooms', 'totalBeds', 'amenities',
-    'foodProvided', 'mealType', 'mealIncluded', 'mealCost',
+    'foodProvided', 'mealsPerDay', 'mealsList', 'mealType', 'mealIncluded', 'mealCost',
     'noSmoking', 'noDrinking', 'noNonVeg', 'guestPolicy', 'lockInPeriod', 'noticePeriod',
     'maintenanceIncluded', 'electricityIncluded', 'electricityBilling', 'fixedElectricityAmount',
     'securityDeposit', 'tokenAmount',
@@ -58,7 +58,7 @@ const HEADERS = {
   ],
   ROOM_CONFIGS: [
     'configId', 'propertyId', 'propertyDisplayId', 'ownerDisplayId',
-    'type', 'acType', 'furnishing', 'count', 'rentPerBed', 'deposit',
+    'type', 'acType', 'furnishing', 'count', 'rentPerBed', 'deposit', 'lockInPeriod',
     'createdAt',
   ],
   SUBMISSIONS: [
@@ -186,7 +186,7 @@ function submitOnboarding(payload) {
       prop.name, prop.address, prop.locality, prop.city, prop.pincode, prop.googleMapsLink || '',
       prop.pgType, prop.totalRooms, prop.totalBeds,
       (prop.amenities || []).join(', '),
-      prop.foodProvided, prop.mealType, prop.mealIncluded, prop.mealCost || '',
+      prop.foodProvided, prop.mealsPerDay || 3, (prop.mealsList || []).join(', '), prop.mealType, prop.mealIncluded, prop.mealCost || '',
       prop.noSmoking, prop.noDrinking, prop.noNonVeg,
       prop.guestPolicy, prop.lockInPeriod, prop.noticePeriod,
       prop.maintenanceIncluded, prop.electricityIncluded,
@@ -205,7 +205,7 @@ function submitOnboarding(payload) {
     (prop.roomConfigs || []).forEach((rc) => {
       const rcRow = [
         rc.configId, prop.propertyId, propDisplayId, ownerDisplayId,
-        rc.type, rc.acType, rc.furnishing, rc.count, rc.rentPerBed, rc.deposit,
+        rc.type, rc.acType, rc.furnishing, rc.count, rc.rentPerBed, rc.deposit, rc.lockInPeriod || 1,
         now,
       ];
       roomSheet.appendRow(rcRow);
