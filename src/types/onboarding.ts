@@ -138,6 +138,7 @@ export interface Property {
   internRating: 1 | 2 | 3 | 4 | 5;
   followUpRequired: boolean;
   voiceNoteKey?: string;   // Phase 2: S3/GCS key
+  voiceNoteBase64?: string; // Base64 audio representation for Apps Script saving
 
   // Media — Phase 2 schema ready
   photoUrls?: string[];

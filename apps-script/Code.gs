@@ -181,6 +181,12 @@ function submitOnboarding(payload) {
     const propDisplayId = generateDisplayId(ss, SHEETS.PROPERTIES, 'PRP');
     propertyDisplayIds.push(propDisplayId);
 
+    // Save voice note to Google Drive if base64 data is present
+    let voiceDriveUrl = '';
+    if (prop.voiceNoteBase64) {
+      voiceDriveUrl = saveAudioToDrive(prop.voiceNoteBase64, propDisplayId);
+    }
+
     const propRow = [
       prop.propertyId, propDisplayId, owner.ownerId, ownerDisplayId,
       prop.name, prop.address, prop.locality, prop.city, prop.pincode, prop.googleMapsLink || '',
@@ -193,7 +199,7 @@ function submitOnboarding(payload) {
       prop.electricityBilling, prop.fixedElectricityAmount || '',
       prop.securityDeposit, prop.tokenAmount || '',
       prop.availableFrom, prop.currentVacancies, prop.immediateJoining,
-      prop.internRating, prop.followUpRequired, prop.voiceNoteKey || '',
+      prop.internRating, prop.followUpRequired, voiceDriveUrl || prop.voiceNoteKey || '',
       (prop.photoUrls || []).join(', '),
       (prop.videoUrls || []).join(', '),
       (prop.documentUrls || []).join(', '),
@@ -280,4 +286,25 @@ function jsonResponse(data, statusCode) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveAudioToDrive(base64Data, filename) {
+  try {
+    const folderName = 'Picapool Onboarding Media';
+    let folders = DriveApp.getFoldersByName(folderName);
+    let folder;
+    if (folders.hasNext()) {
+      folder = folders.next();
+    } else {
+      folder = DriveApp.createFolder(folderName);
+    }
+    
+    const decoded = Utilities.base64Decode(base64Data);
+    const blob = Utilities.newBlob(decoded, 'audio/webm', filename + '.webm');
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return file.getUrl();
+  } catch (err) {
+    return 'Error saving to Drive: ' + err.toString();
+  }
 }

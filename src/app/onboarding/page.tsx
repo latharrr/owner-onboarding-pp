@@ -38,6 +38,19 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64data = reader.result as string;
+      const base64 = base64data.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
 export default function ConsolidatedOnboardingPage() {
   const router = useRouter();
   const isOnline = useOnlineStatus();
@@ -287,6 +300,59 @@ export default function ConsolidatedOnboardingPage() {
 
     const deviceInfo = getDeviceInfo();
 
+    // Convert voice note blobs to base64 for Drive uploading
+    const processedProperties = await Promise.all(
+      properties.map(async (p) => {
+        let voiceNoteBase64 = '';
+        if (p.voiceBlob) {
+          try {
+            voiceNoteBase64 = await blobToBase64(p.voiceBlob);
+          } catch (e) {
+            console.error('Base64 conversion failed:', e);
+          }
+        }
+        return {
+          propertyId: p.propertyId,
+          ownerId: '',
+          name: p.name || 'Picapool PG',
+          address: p.address || 'Local Locality',
+          locality: p.locality || 'Locality',
+          city: p.city || 'Bangalore',
+          pincode: p.pincode || '560034',
+          googleMapsLink: p.googleMapsLink || '',
+          pgType: p.pgType,
+          totalRooms: p.totalRooms,
+          totalBeds: p.totalBeds,
+          roomConfigs: p.roomConfigs,
+          amenities: p.amenities,
+          foodProvided: p.foodProvided,
+          mealsPerDay: p.mealsPerDay || 3,
+          mealsList: p.mealsList || ['breakfast', 'lunch', 'dinner'],
+          mealType: p.mealType,
+          mealIncluded: p.mealIncluded,
+          mealCost: p.mealCost,
+          noSmoking: p.noSmoking,
+          noDrinking: p.noDrinking,
+          noNonVeg: p.noNonVeg,
+          guestPolicy: p.guestPolicy,
+          lockInPeriod: p.lockInPeriod,
+          noticePeriod: p.noticePeriod,
+          maintenanceIncluded: p.maintenanceIncluded,
+          electricityIncluded: p.electricityIncluded,
+          electricityBilling: p.electricityBilling,
+          fixedElectricityAmount: p.fixedElectricityAmount,
+          securityDeposit: p.securityDeposit,
+          tokenAmount: p.tokenAmount,
+          availableFrom: p.availableFrom,
+          currentVacancies: p.currentVacancies,
+          immediateJoining: p.immediateJoining,
+          internRating: p.internRating,
+          followUpRequired: p.followUpRequired,
+          voiceNoteBase64,
+        };
+      })
+    );
+
     const payload = {
       session: {
         sessionId,
@@ -307,55 +373,21 @@ export default function ConsolidatedOnboardingPage() {
         address: ownerAddress || 'Local Address',
         visitStatus,
       },
-      properties: properties.map((p) => ({
-        propertyId: p.propertyId,
-        ownerId: '',
-        name: p.name || 'Picapool PG',
-        address: p.address || 'Local Locality',
-        locality: p.locality || 'Locality',
-        city: p.city || 'Bangalore',
-        pincode: p.pincode || '560034',
-        googleMapsLink: p.googleMapsLink || '',
-        pgType: p.pgType,
-        totalRooms: p.totalRooms,
-        totalBeds: p.totalBeds,
-        roomConfigs: p.roomConfigs,
-        amenities: p.amenities,
-        foodProvided: p.foodProvided,
-        mealType: p.mealType,
-        mealIncluded: p.mealIncluded,
-        mealCost: p.mealCost,
-        noSmoking: p.noSmoking,
-        noDrinking: p.noDrinking,
-        noNonVeg: p.noNonVeg,
-        guestPolicy: p.guestPolicy,
-        lockInPeriod: p.lockInPeriod,
-        noticePeriod: p.noticePeriod,
-        maintenanceIncluded: p.maintenanceIncluded,
-        electricityIncluded: p.electricityIncluded,
-        electricityBilling: p.electricityBilling,
-        fixedElectricityAmount: p.fixedElectricityAmount,
-        securityDeposit: p.securityDeposit,
-        tokenAmount: p.tokenAmount,
-        availableFrom: p.availableFrom,
-        currentVacancies: p.currentVacancies,
-        immediateJoining: p.immediateJoining,
-        internRating: p.internRating,
-        followUpRequired: p.followUpRequired,
-      })),
+      properties: processedProperties,
     };
 
-    // Store in global store for success screen
+    // Store in global store for success screen (strip base64 to protect local storage quota)
     const store = useOnboardingStore.getState();
     store.reset();
     store.initSession(internName);
     store.updateOwner(payload.owner);
     payload.properties.forEach((p, i) => {
+      const storeProp = { ...p, voiceNoteBase64: undefined };
       if (i === 0) {
-        store.updateProperty(0, p);
+        store.updateProperty(0, storeProp);
       } else {
         store.addProperty();
-        store.updateProperty(i, p);
+        store.updateProperty(i, storeProp);
       }
     });
 
