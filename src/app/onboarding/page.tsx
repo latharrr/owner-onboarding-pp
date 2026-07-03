@@ -376,15 +376,21 @@ export default function ConsolidatedOnboardingPage() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Submission failed';
-      // Fake submission success locally for offline mode/speed demonstration
-      store.setSubmitted({
-        submissionId: generateId(),
-        submissionDisplayId: 'SUB-TEMP',
-        ownerDisplayId: 'OWN-TEMP',
-        propertyDisplayIds: properties.map((_, idx) => `PRP-TEMP-${idx + 1}`),
-      });
-      toast.info('Saved locally/offline. Submission queued.');
-      router.push('/success');
+      console.error('Submission error:', msg);
+      
+      if (isOnline) {
+        toast.error(`Submission Error: ${msg}`);
+      } else {
+        // Offline fallback
+        store.setSubmitted({
+          submissionId: generateId(),
+          submissionDisplayId: 'SUB-TEMP',
+          ownerDisplayId: 'OWN-TEMP',
+          propertyDisplayIds: properties.map((_, idx) => `PRP-TEMP-${idx + 1}`),
+        });
+        toast.info('Saved locally/offline. Submission queued.');
+        router.push('/success');
+      }
     } finally {
       setIsSubmitting(false);
     }
