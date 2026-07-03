@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,60 +8,96 @@ import {
   Loader2,
   Plus,
   Trash2,
-  MapPin,
-  Clock,
   Wifi,
   WifiOff,
   Mic,
   Square,
-  Play,
-  Pause,
   Star,
   Check,
-  ChevronRight,
   Sparkles,
+  MapPin,
 } from 'lucide-react';
 
 import { useOnboardingStore } from '@/lib/store/onboarding-store';
 import { useGPS } from '@/lib/hooks/useGPS';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 import { getDeviceInfo } from '@/lib/utils/device';
-import { generateId, generateSessionId, formatDuration } from '@/lib/utils/ids';
+import { generateId, generateSessionId } from '@/lib/utils/ids';
 import { AMENITIES } from '@/lib/constants/amenities';
-import { MEAL_TYPES } from '@/lib/constants/food';
 import { ROOM_TYPES, AC_TYPES, FURNISHING_TYPES } from '@/lib/constants/roomTypes';
 import { VISIT_STATUS_OPTIONS } from '@/lib/constants/visitStatus';
 import type { VisitStatus } from '@/types/onboarding';
-
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 
-const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
+const blobToBase64 = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64data = reader.result as string;
-      const base64 = base64data.split(',')[1];
-      resolve(base64);
+      resolve(base64data.split(',')[1]);
     };
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
-};
 
+/* ── Reusable field components ─────────────────────────────── */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function TextInput({
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+  inputMode,
+  maxLength,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  maxLength?: number;
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      type={type}
+      inputMode={inputMode}
+      maxLength={maxLength}
+      className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+    />
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{children}</p>
+  );
+}
+
+function Divider() {
+  return <div className="h-px bg-gray-100 my-1" />;
+}
+
+/* ── Main Page ─────────────────────────────────────────────── */
 export default function ConsolidatedOnboardingPage() {
   const router = useRouter();
   const isOnline = useOnlineStatus();
   const { capture: captureGPS, latitude, longitude, status: gpsStatus, error: gpsError } = useGPS();
 
-  // â”€â”€ Onboarding State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [internName, setInternName] = useState('');
   const [sessionId, setSessionId] = useState('');
   const [startedAt, setStartedAt] = useState('');
 
-  // Owner details (Pre-filled defaults)
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerAltPhone, setOwnerAltPhone] = useState('');
@@ -69,55 +105,34 @@ export default function ConsolidatedOnboardingPage() {
   const [ownerAddress, setOwnerAddress] = useState('');
   const [visitStatus, setVisitStatus] = useState<VisitStatus>('visited');
 
-  // Properties array
   const [properties, setProperties] = useState<any[]>([]);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize defaults on mount
   useEffect(() => {
-    // Load stored intern name
     const storedName = localStorage.getItem('picapool-intern-name') || 'Field Intern';
     setInternName(storedName);
     setSessionId(generateSessionId());
     setStartedAt(new Date().toISOString());
-
-    // Auto GPS
     captureGPS();
-
-    // Add first property with smart defaults
     setProperties([createDefaultPropertyState()]);
   }, []);
 
-  // Auto-reverse geocode coordinates on capture
   useEffect(() => {
     if (!latitude || !longitude) return;
-
     const reverseGeocode = async () => {
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-          {
-            headers: {
-              'User-Agent': 'PicapoolOnboarding/1.0 (onboarding@picapool.com)',
-            },
-          }
+          { headers: { 'User-Agent': 'PicapoolOnboarding/1.0 (onboarding@picapool.com)' } }
         );
         const data = await res.json();
-        
-        if (data && data.address) {
+        if (data?.address) {
           const addr = data.address;
           const displayAddr = data.display_name || '';
-          
-          // Derive locality
-          const derivedLocality = addr.suburb || addr.neighbourhood || addr.suburb || addr.road || 'Local Locality';
+          const derivedLocality = addr.suburb || addr.neighbourhood || addr.road || 'Local Locality';
           const derivedCity = addr.city || addr.town || addr.village || 'Bangalore';
           const derivedPincode = addr.postcode || '560034';
-
-          // Update owner address
           setOwnerAddress(displayAddr);
-
-          // Update property details
           setProperties((prev) => {
             if (prev.length === 0) return prev;
             const updated = [...prev];
@@ -131,24 +146,17 @@ export default function ConsolidatedOnboardingPage() {
             };
             return updated;
           });
-          
           toast.success(`Location captured: ${derivedLocality}`);
         }
-      } catch (err) {
-        console.error('Reverse geocoding error:', err);
-        // Fallback: set google maps link anyway
+      } catch {
         setProperties((prev) => {
           if (prev.length === 0) return prev;
           const updated = [...prev];
-          updated[0] = {
-            ...updated[0],
-            googleMapsLink: `https://www.google.com/maps?q=${latitude},${longitude}`,
-          };
+          updated[0] = { ...updated[0], googleMapsLink: `https://www.google.com/maps?q=${latitude},${longitude}` };
           return updated;
         });
       }
     };
-
     reverseGeocode();
   }, [latitude, longitude]);
 
@@ -164,7 +172,6 @@ export default function ConsolidatedOnboardingPage() {
       pgType: 'unisex',
       totalRooms: 10,
       totalBeds: 20,
-      // Default room config
       roomConfigs: [
         {
           configId: generateId(),
@@ -208,10 +215,9 @@ export default function ConsolidatedOnboardingPage() {
     };
   }
 
-  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleAddProperty = () => {
     setProperties([...properties, createDefaultPropertyState()]);
-    toast.success('Added another property card below');
+    toast.success('Added another property card');
   };
 
   const handleRemoveProperty = (index: number) => {
@@ -237,16 +243,7 @@ export default function ConsolidatedOnboardingPage() {
     const updated = [...properties];
     updated[propIndex].roomConfigs = [
       ...updated[propIndex].roomConfigs,
-      {
-        configId: generateId(),
-        type: 'single',
-        acType: 'non_ac',
-        furnishing: 'semi_furnished',
-        count: 5,
-        rentPerBed: 8000,
-        deposit: 8000,
-        lockInPeriod: 1,
-      },
+      { configId: generateId(), type: 'single', acType: 'non_ac', furnishing: 'semi_furnished', count: 5, rentPerBed: 8000, deposit: 8000, lockInPeriod: 1 },
     ];
     setProperties(updated);
   };
@@ -258,13 +255,11 @@ export default function ConsolidatedOnboardingPage() {
     setProperties(updated);
   };
 
-  // â”€â”€ Voice Recorder Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const startRecording = async (index: number) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
-
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
@@ -273,7 +268,6 @@ export default function ConsolidatedOnboardingPage() {
         updatePropertyField(index, 'audioUrl', url);
         updatePropertyField(index, 'isRecording', false);
       };
-
       recorder.start();
       const updated = [...properties];
       updated[index].isRecording = true;
@@ -292,113 +286,59 @@ export default function ConsolidatedOnboardingPage() {
     }
   };
 
-  // â”€â”€ Submit Onboarding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSubmit = async () => {
     setIsSubmitting(true);
     const endedAt = new Date().toISOString();
     const duration = Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 1000);
-
     const deviceInfo = getDeviceInfo();
 
-    // Convert voice note blobs to base64 for Drive uploading
     const processedProperties = await Promise.all(
       properties.map(async (p) => {
         let voiceNoteBase64 = '';
         if (p.voiceBlob) {
-          try {
-            voiceNoteBase64 = await blobToBase64(p.voiceBlob);
-          } catch (e) {
-            console.error('Base64 conversion failed:', e);
-          }
+          try { voiceNoteBase64 = await blobToBase64(p.voiceBlob); } catch { /* ignore */ }
         }
         return {
-          propertyId: p.propertyId,
-          ownerId: '',
-          name: p.name || 'Picapool PG',
-          address: p.address || 'Local Locality',
-          locality: p.locality || 'Locality',
-          city: p.city || 'Bangalore',
-          pincode: p.pincode || '560034',
-          googleMapsLink: p.googleMapsLink || '',
-          pgType: p.pgType,
-          totalRooms: p.totalRooms,
-          totalBeds: p.totalBeds,
-          roomConfigs: p.roomConfigs,
-          amenities: p.amenities,
-          foodProvided: p.foodProvided,
-          mealsPerDay: p.mealsPerDay || 3,
+          propertyId: p.propertyId, ownerId: '',
+          name: p.name || 'Picapool PG', address: p.address || 'Local Locality',
+          locality: p.locality || 'Locality', city: p.city || 'Bangalore',
+          pincode: p.pincode || '560034', googleMapsLink: p.googleMapsLink || '',
+          pgType: p.pgType, totalRooms: p.totalRooms, totalBeds: p.totalBeds,
+          roomConfigs: p.roomConfigs, amenities: p.amenities,
+          foodProvided: p.foodProvided, mealsPerDay: p.mealsPerDay || 3,
           mealsList: p.mealsList || ['breakfast', 'lunch', 'dinner'],
-          mealType: p.mealType,
-          mealIncluded: p.mealIncluded,
-          mealCost: p.mealCost,
-          noSmoking: p.noSmoking,
-          noDrinking: p.noDrinking,
-          noNonVeg: p.noNonVeg,
-          guestPolicy: p.guestPolicy,
-          lockInPeriod: p.lockInPeriod,
-          noticePeriod: p.noticePeriod,
-          maintenanceIncluded: p.maintenanceIncluded,
-          electricityIncluded: p.electricityIncluded,
-          electricityBilling: p.electricityBilling,
-          fixedElectricityAmount: p.fixedElectricityAmount,
-          securityDeposit: p.securityDeposit,
-          tokenAmount: p.tokenAmount,
-          availableFrom: p.availableFrom,
-          currentVacancies: p.currentVacancies,
-          immediateJoining: p.immediateJoining,
-          internRating: p.internRating,
-          followUpRequired: p.followUpRequired,
-          voiceNoteBase64,
+          mealType: p.mealType, mealIncluded: p.mealIncluded, mealCost: p.mealCost,
+          noSmoking: p.noSmoking, noDrinking: p.noDrinking, noNonVeg: p.noNonVeg,
+          guestPolicy: p.guestPolicy, lockInPeriod: p.lockInPeriod, noticePeriod: p.noticePeriod,
+          maintenanceIncluded: p.maintenanceIncluded, electricityIncluded: p.electricityIncluded,
+          electricityBilling: p.electricityBilling, fixedElectricityAmount: p.fixedElectricityAmount,
+          securityDeposit: p.securityDeposit, tokenAmount: p.tokenAmount,
+          availableFrom: p.availableFrom, currentVacancies: p.currentVacancies,
+          immediateJoining: p.immediateJoining, internRating: p.internRating,
+          followUpRequired: p.followUpRequired, voiceNoteBase64,
         };
       })
     );
 
     const payload = {
-      session: {
-        sessionId,
-        internName,
-        deviceType: deviceInfo.deviceType,
-        browser: deviceInfo.browser,
-        gps: latitude ? { latitude, longitude, capturedAt: new Date().toISOString() } : undefined,
-        startedAt,
-        endedAt,
-        duration,
-      },
-      owner: {
-        ownerId: generateId(),
-        name: ownerName || 'New Owner',
-        phone: ownerPhone || '9999999999',
-        altPhone: ownerAltPhone || undefined,
-        email: ownerEmail || undefined,
-        address: ownerAddress || 'Local Address',
-        visitStatus,
-      },
+      session: { sessionId, internName, deviceType: deviceInfo.deviceType, browser: deviceInfo.browser, gps: latitude ? { latitude, longitude, capturedAt: new Date().toISOString() } : undefined, startedAt, endedAt, duration },
+      owner: { ownerId: generateId(), name: ownerName || 'New Owner', phone: ownerPhone || '9999999999', altPhone: ownerAltPhone || undefined, email: ownerEmail || undefined, address: ownerAddress || 'Local Address', visitStatus },
       properties: processedProperties,
     };
 
-    // Store in global store for success screen (strip base64 to protect local storage quota)
     const store = useOnboardingStore.getState();
     store.reset();
     store.initSession(internName);
     store.updateOwner(payload.owner);
     payload.properties.forEach((p, i) => {
       const storeProp = { ...p, voiceNoteBase64: undefined };
-      if (i === 0) {
-        store.updateProperty(0, storeProp);
-      } else {
-        store.addProperty();
-        store.updateProperty(i, storeProp);
-      }
+      if (i === 0) { store.updateProperty(0, storeProp); }
+      else { store.addProperty(); store.updateProperty(i, storeProp); }
     });
 
     try {
-      const res = await fetch('/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch('/api/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
-
       if (data.success) {
         store.setSubmitted(data.data);
         toast.success('Submitted successfully!');
@@ -408,19 +348,11 @@ export default function ConsolidatedOnboardingPage() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Submission failed';
-      console.error('Submission error:', msg);
-      
       if (isOnline) {
         toast.error(`Submission Error: ${msg}`);
       } else {
-        // Offline fallback
-        store.setSubmitted({
-          submissionId: generateId(),
-          submissionDisplayId: 'SUB-TEMP',
-          ownerDisplayId: 'OWN-TEMP',
-          propertyDisplayIds: properties.map((_, idx) => `PRP-TEMP-${idx + 1}`),
-        });
-        toast.info('Saved locally/offline. Submission queued.');
+        store.setSubmitted({ submissionId: generateId(), submissionDisplayId: 'SUB-TEMP', ownerDisplayId: 'OWN-TEMP', propertyDisplayIds: properties.map((_, idx) => `PRP-TEMP-${idx + 1}`) });
+        toast.info('Saved offline. Will sync when online.');
         router.push('/success');
       }
     } finally {
@@ -428,15 +360,12 @@ export default function ConsolidatedOnboardingPage() {
     }
   };
 
-  // Calculate dynamic progress
   const getProgress = () => {
     let score = 0;
     const total = 7;
-    
     if (ownerName.trim()) score++;
     if (/^[6-9]\d{9}$/.test(ownerPhone)) score++;
     if (ownerAddress.trim()) score++;
-    
     if (properties.length > 0) {
       const p = properties[0];
       if (p.name.trim()) score++;
@@ -444,302 +373,204 @@ export default function ConsolidatedOnboardingPage() {
       if (/^\d{6}$/.test(p.pincode)) score++;
       if (p.address.trim()) score++;
     }
-    
     return Math.round((score / total) * 100);
   };
 
+  /* ── Render ──────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen pb-28" style={{ background: 'linear-gradient(160deg, #fff7f0 0%, #f9fafb 60%)' }}>
+    <div className="min-h-screen bg-white pb-28">
 
-      {/* â”€â”€ Sticky Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-orange-100 shadow-sm">
-        <div className="px-4 py-3 flex items-center justify-between max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-100">
+        <div className="max-w-xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(135deg, #FF7A00, #ff9a3c)' }}>
-              <span className="text-white font-black text-sm">P</span>
+            <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
+              <span className="text-white font-black text-xs">P</span>
             </div>
             <div>
-              <p className="font-extrabold text-gray-900 text-sm leading-tight">Picapool Express</p>
-              <p className="text-[10px] text-gray-400 leading-tight">{internName}</p>
+              <p className="font-bold text-gray-900 text-sm leading-none">Picapool</p>
+              <p className="text-[10px] text-gray-400 leading-none mt-0.5">{internName}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${isOnline ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-              {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              {isOnline ? 'Live' : 'Offline'}
-            </div>
-            <div className="text-[11px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full">
-              {getProgress()}%
-            </div>
+            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${isOnline ? 'bg-gray-100 text-gray-600' : 'bg-gray-900 text-white'}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+            <span className="text-[11px] font-semibold text-gray-400">{getProgress()}%</span>
           </div>
         </div>
-        {/* Progress bar */}
-        <div className="h-1 bg-orange-100 w-full">
-          <div
-            className="h-full transition-all duration-500 ease-out rounded-full"
-            style={{ width: `${getProgress()}%`, background: 'linear-gradient(90deg, #FF7A00, #ff9a3c)' }}
-          />
+        <div className="h-px bg-gray-100 w-full">
+          <div className="h-px bg-gray-900 transition-all duration-500" style={{ width: `${getProgress()}%` }} />
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 pt-5 flex flex-col gap-5">
+      <div className="max-w-xl mx-auto px-5 pt-6 flex flex-col gap-6">
 
-        {/* â”€â”€ Hero Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        <div className="rounded-2xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FF7A00 0%, #ff6b00 50%, #e05a00 100%)' }}>
-          <div className="absolute top-0 right-0 w-32 h-32 opacity-10" style={{ background: 'radial-gradient(circle, white 0%, transparent 70%)' }} />
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-extrabold text-lg leading-tight">Fast PG Onboarding</h1>
-              <p className="text-white/80 text-xs mt-1 leading-relaxed">
-                Fill what you know â€” GPS auto-fills the address. Tap to select, then Submit.
-              </p>
-            </div>
+        {/* Title */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">PG Onboarding</h1>
+          <p className="text-sm text-gray-400 mt-1">GPS auto-fills location. Fill what you know, then submit.</p>
+          {gpsStatus === 'capturing' && (
+            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+              <MapPin className="w-3 h-3" /> Capturing location...
+            </p>
+          )}
+          {gpsStatus === 'captured' && (
+            <p className="text-xs text-green-600 mt-2 flex items-center gap-1.5">
+              <MapPin className="w-3 h-3" /> Location captured
+            </p>
+          )}
+          {(gpsStatus === 'denied' || gpsStatus === 'unavailable') && (
+            <p className="text-xs text-red-500 mt-2 flex items-center gap-1.5" title={gpsError}>
+              <MapPin className="w-3 h-3" /> Location unavailable - fill address manually
+            </p>
+          )}
+        </div>
+
+        {/* Owner Section */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-gray-900">Owner</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Name">
+              <TextInput value={ownerName} onChange={setOwnerName} placeholder="Full name" />
+            </Field>
+            <Field label="Phone">
+              <TextInput value={ownerPhone} onChange={setOwnerPhone} placeholder="10-digit number" type="tel" inputMode="numeric" maxLength={10} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Visit Status">
+              <select
+                value={visitStatus}
+                onChange={(e) => setVisitStatus(e.target.value as VisitStatus)}
+                className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all"
+              >
+                {VISIT_STATUS_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Alt. Phone (optional)">
+              <TextInput value={ownerAltPhone} onChange={setOwnerAltPhone} placeholder="Optional" type="tel" inputMode="numeric" maxLength={10} />
+            </Field>
           </div>
         </div>
 
-        {/* â”€â”€ SECTION 1: OWNER DETAILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-50" style={{ background: 'linear-gradient(90deg, #fff7f0, #ffffff)' }}>
-            <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center text-base">ðŸ‘¤</div>
-            <div>
-              <h2 className="font-extrabold text-gray-900 text-sm">Owner Information</h2>
-              <p className="text-[11px] text-gray-400">Who owns this property?</p>
-            </div>
-          </div>
-          <div className="px-5 py-4 flex flex-col gap-3.5">
+        <Divider />
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Owner Name</label>
-                <input
-                  value={ownerName}
-                  onChange={(e) => setOwnerName(e.target.value)}
-                  placeholder="Full name"
-                  className="h-12 rounded-xl border border-gray-200 px-3.5 text-sm font-medium text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-gray-50/50 placeholder:text-gray-300"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Phone Number</label>
-                <input
-                  value={ownerPhone}
-                  onChange={(e) => setOwnerPhone(e.target.value)}
-                  placeholder="10-digit mobile"
-                  maxLength={10}
-                  type="tel"
-                  inputMode="numeric"
-                  className="h-12 rounded-xl border border-gray-200 px-3.5 text-sm font-medium text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-gray-50/50 placeholder:text-gray-300"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Visit Status</label>
-                <select
-                  value={visitStatus}
-                  onChange={(e) => setVisitStatus(e.target.value as VisitStatus)}
-                  className="h-12 rounded-xl border border-gray-200 px-3.5 text-sm font-medium text-gray-800 bg-gray-50/50 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all"
-                >
-                  {VISIT_STATUS_OPTIONS.map((o) => (
-                    <option key={o.id} value={o.id}>{o.icon} {o.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Alt. Phone</label>
-                <input
-                  value={ownerAltPhone}
-                  onChange={(e) => setOwnerAltPhone(e.target.value)}
-                  placeholder="Optional"
-                  maxLength={10}
-                  type="tel"
-                  inputMode="numeric"
-                  className="h-12 rounded-xl border border-gray-200 px-3.5 text-sm font-medium text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-gray-50/50 placeholder:text-gray-300"
-                />
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* â”€â”€ SECTION 2: PROPERTIES LOOP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Properties */}
         {properties.map((prop, pIndex) => (
-          <div key={prop.propertyId} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div key={prop.propertyId} className="flex flex-col gap-5">
+            {/* Property header */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900">
+                Property {properties.length > 1 ? `#${pIndex + 1}` : ''}
+              </h2>
+              {properties.length > 1 && (
+                <button type="button" onClick={() => handleRemoveProperty(pIndex)}
+                  className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                </button>
+              )}
+            </div>
 
-            {/* Property Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50" style={{ background: 'linear-gradient(90deg, #f0f7ff, #ffffff)' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center text-base">ðŸ </div>
-                <div>
-                  <h2 className="font-extrabold text-gray-900 text-sm">Property #{pIndex + 1}</h2>
-                  <p className="text-[11px] text-gray-400">PG details & configuration</p>
-                </div>
+            {/* Location */}
+            <div className="flex flex-col gap-3">
+              <SectionLabel>Location</SectionLabel>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="PG Name">
+                  <TextInput value={prop.name} onChange={(v) => updatePropertyField(pIndex, 'name', v)} placeholder="e.g. Sunrise PG" />
+                </Field>
+                <Field label="Locality">
+                  <TextInput value={prop.locality} onChange={(v) => updatePropertyField(pIndex, 'locality', v)} placeholder="e.g. Koramangala" />
+                </Field>
               </div>
-              <div className="flex items-center gap-2">
-                {/* GPS badge */}
-                {pIndex === 0 && (
-                  <>
-                    {gpsStatus === 'capturing' && (
-                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full animate-pulse">ðŸ“¡ GPS...</span>
-                    )}
-                    {gpsStatus === 'captured' && (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">ðŸ“ GPS âœ“</span>
-                    )}
-                    {(gpsStatus === 'denied' || gpsStatus === 'unavailable') && (
-                      <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-full" title={gpsError}>âš ï¸ No GPS</span>
-                    )}
-                  </>
-                )}
-                {properties.length > 1 && (
-                  <button type="button" onClick={() => handleRemoveProperty(pIndex)}
-                    className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <Field label="Address">
+                    <TextInput value={prop.address} onChange={(v) => updatePropertyField(pIndex, 'address', v)} placeholder="Street, landmark" />
+                  </Field>
+                </div>
+                <Field label="Pincode">
+                  <TextInput value={prop.pincode} onChange={(v) => updatePropertyField(pIndex, 'pincode', v)} placeholder="560001" maxLength={6} inputMode="numeric" />
+                </Field>
               </div>
             </div>
 
-            <div className="px-5 py-4 flex flex-col gap-5">
-
-              {/* PG Identity */}
-              <div className="flex flex-col gap-3">
-                <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">ðŸ“ Location</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">PG Name</label>
-                    <input
-                      value={prop.name}
-                      onChange={(e) => updatePropertyField(pIndex, 'name', e.target.value)}
-                      placeholder="e.g. Sunrise PG"
-                      className="h-12 rounded-xl border border-gray-200 px-3.5 text-sm font-medium text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-gray-50/50 placeholder:text-gray-300"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Locality / Area</label>
-                    <input
-                      value={prop.locality}
-                      onChange={(e) => updatePropertyField(pIndex, 'locality', e.target.value)}
-                      placeholder="e.g. Koramangala"
-                      className="h-12 rounded-xl border border-gray-200 px-3.5 text-sm font-medium text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-gray-50/50 placeholder:text-gray-300"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2 flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Full Address</label>
-                    <input
-                      value={prop.address}
-                      onChange={(e) => updatePropertyField(pIndex, 'address', e.target.value)}
-                      placeholder="Street, landmark"
-                      className="h-12 rounded-xl border border-gray-200 px-3.5 text-sm font-medium text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-gray-50/50 placeholder:text-gray-300"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Pincode</label>
-                    <input
-                      value={prop.pincode}
-                      onChange={(e) => updatePropertyField(pIndex, 'pincode', e.target.value)}
-                      placeholder="6 digits"
-                      maxLength={6}
-                      inputMode="numeric"
-                      className="h-12 rounded-xl border border-gray-200 px-3.5 text-sm font-medium text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-gray-50/50 placeholder:text-gray-300"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="h-px bg-gray-50" />
-
-              {/* PG Type */}
-              <div className="flex flex-col gap-2.5">
-                <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">ðŸ‘¥ Residents</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'male', label: 'Male Only', icon: 'ðŸ‘¨' },
-                    { id: 'female', label: 'Female Only', icon: 'ðŸ‘©' },
-                    { id: 'unisex', label: 'Unisex', icon: 'ðŸ‘¥' },
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => updatePropertyField(pIndex, 'pgType', t.id)}
-                      className={`py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${
-                        prop.pgType === t.id
-                          ? 'border-orange-400 text-orange-600 shadow-sm'
-                          : 'border-gray-200 text-gray-500 bg-gray-50/50'
-                      }`}
-                      style={prop.pgType === t.id ? { background: 'linear-gradient(135deg, #fff7f0, #ffe4cc)' } : {}}
-                    >
-                      <span className="text-lg">{t.icon}</span>
-                      <span>{t.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Capacity */}
-              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4 grid grid-cols-2 gap-4">
+            {/* Resident Type */}
+            <div className="flex flex-col gap-2">
+              <SectionLabel>Resident Type</SectionLabel>
+              <div className="flex gap-2">
                 {[
-                  { field: 'totalRooms', label: 'Total Rooms', icon: 'ðŸšª' },
-                  { field: 'totalBeds', label: 'Total Beds', icon: 'ðŸ›ï¸' },
-                ].map(({ field, label, icon }) => (
-                  <div key={field} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-base">{icon}</p>
-                      <p className="text-[11px] font-bold text-gray-600 mt-0.5">{label}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button"
-                        onClick={() => updatePropertyField(pIndex, field, Math.max(1, prop[field] - 1))}
-                        className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-600 text-base shadow-sm active:scale-95 transition-transform">
-                        âˆ’
+                  { id: 'male', label: 'Male' },
+                  { id: 'female', label: 'Female' },
+                  { id: 'unisex', label: 'Unisex' },
+                ].map((t) => (
+                  <button key={t.id} type="button"
+                    onClick={() => updatePropertyField(pIndex, 'pgType', t.id)}
+                    className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition-all ${prop.pgType === t.id ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Capacity */}
+            <div className="flex flex-col gap-2">
+              <SectionLabel>Capacity</SectionLabel>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { field: 'totalRooms', label: 'Total Rooms' },
+                  { field: 'totalBeds', label: 'Total Beds' },
+                ].map(({ field, label }) => (
+                  <div key={field} className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2.5">
+                    <span className="text-sm text-gray-600">{label}</span>
+                    <div className="flex items-center gap-3">
+                      <button type="button" onClick={() => updatePropertyField(pIndex, field, Math.max(1, prop[field] - 1))}
+                        className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center text-gray-600 font-semibold text-base hover:bg-gray-50 transition-colors">
+                        -
                       </button>
-                      <span className="w-8 text-center text-base font-extrabold text-gray-800">{prop[field]}</span>
-                      <button type="button"
-                        onClick={() => updatePropertyField(pIndex, field, prop[field] + 1)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-base shadow-sm active:scale-95 transition-transform"
-                        style={{ background: '#FF7A00' }}>
+                      <span className="text-sm font-bold text-gray-900 w-6 text-center">{prop[field]}</span>
+                      <button type="button" onClick={() => updatePropertyField(pIndex, field, prop[field] + 1)}
+                        className="w-7 h-7 rounded-md bg-gray-900 border border-gray-900 flex items-center justify-center text-white font-semibold text-base transition-colors">
                         +
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
 
-              <div className="h-px bg-gray-50" />
-
-              {/* Room Configurations */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">ðŸ› Room Configs</p>
-                  <button type="button" onClick={() => addRoomConfig(pIndex)}
-                    className="text-[11px] font-bold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-colors flex items-center gap-1">
-                    <Plus className="w-3 h-3" /> Add Type
-                  </button>
-                </div>
-
+            {/* Room Configs */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <SectionLabel>Room Configurations</SectionLabel>
+                <button type="button" onClick={() => addRoomConfig(pIndex)}
+                  className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1 transition-colors">
+                  <Plus className="w-3 h-3" /> Add type
+                </button>
+              </div>
+              <div className="flex flex-col gap-2">
                 {prop.roomConfigs.map((config: any, cIndex: number) => (
-                  <div key={config.configId} className="rounded-xl border border-gray-100 p-4 bg-gray-50/50 flex flex-col gap-3 relative">
+                  <div key={config.configId} className="border border-gray-200 rounded-lg p-3 flex flex-col gap-3 relative">
                     {prop.roomConfigs.length > 1 && (
                       <button type="button" onClick={() => removeRoomConfig(pIndex, cIndex)}
-                        className="absolute top-3 right-3 w-6 h-6 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center text-xs font-bold">
-                        âœ•
+                        className="absolute top-2.5 right-2.5 text-gray-300 hover:text-red-400 text-xs transition-colors">
+                        Remove
                       </button>
                     )}
                     <div className="grid grid-cols-3 gap-2">
                       {[
                         { value: config.type, options: ROOM_TYPES, field: 'type', label: 'Occupancy' },
-                        { value: config.acType, options: AC_TYPES, field: 'acType', label: 'AC Type' },
+                        { value: config.acType, options: AC_TYPES, field: 'acType', label: 'AC' },
                         { value: config.furnishing, options: FURNISHING_TYPES, field: 'furnishing', label: 'Furnishing' },
                       ].map(({ value, options, field, label }) => (
                         <div key={field} className="flex flex-col gap-1">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">{label}</label>
-                          <select value={value}
-                            onChange={(e) => updateRoomConfigField(pIndex, cIndex, field, e.target.value)}
-                            className="h-9 rounded-lg border border-gray-200 text-xs bg-white px-2 text-gray-700 focus:outline-none focus:border-orange-400">
+                          <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</label>
+                          <select value={value} onChange={(e) => updateRoomConfigField(pIndex, cIndex, field, e.target.value)}
+                            className="h-8 rounded-md border border-gray-200 text-xs bg-white px-1.5 text-gray-800 focus:outline-none focus:border-gray-900">
                             {options.map((t: any) => <option key={t.id} value={t.id}>{t.label}</option>)}
                           </select>
                         </div>
@@ -750,236 +581,184 @@ export default function ConsolidatedOnboardingPage() {
                         { field: 'count', label: 'Rooms', value: config.count },
                         { field: 'rentPerBed', label: 'Rent/Bed', value: config.rentPerBed },
                         { field: 'deposit', label: 'Deposit', value: config.deposit },
-                        { field: 'lockInPeriod', label: 'Lock-in (M)', value: config.lockInPeriod ?? 1 },
+                        { field: 'lockInPeriod', label: 'Lock-in (mo)', value: config.lockInPeriod ?? 1 },
                       ].map(({ field, label, value }) => (
                         <div key={field} className="flex flex-col gap-1">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">{label}</label>
+                          <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</label>
                           <input type="number" value={value}
                             onChange={(e) => updateRoomConfigField(pIndex, cIndex, field, Number(e.target.value))}
-                            className="h-9 rounded-lg border border-gray-200 px-1.5 text-xs text-center font-bold bg-white focus:outline-none focus:border-orange-400" />
+                            className="h-8 rounded-md border border-gray-200 px-1.5 text-xs text-center font-semibold bg-white text-gray-900 focus:outline-none focus:border-gray-900" />
                         </div>
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
 
-              <div className="h-px bg-gray-50" />
-
-              {/* Amenities */}
-              <div className="flex flex-col gap-2.5">
-                <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">âœ¨ Amenities</p>
-                <div className="flex flex-wrap gap-2">
-                  {AMENITIES.map((a) => {
-                    const isSelected = prop.amenities.includes(a.id);
-                    return (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => {
-                          const next = isSelected
-                            ? prop.amenities.filter((item: string) => item !== a.id)
-                            : [...prop.amenities, a.id];
-                          updatePropertyField(pIndex, 'amenities', next);
-                        }}
-                        className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
-                          isSelected
-                            ? 'text-orange-700 border-orange-300 shadow-sm'
-                            : 'bg-white text-gray-500 border-gray-200'
-                        }`}
-                        style={isSelected ? { background: 'linear-gradient(135deg, #fff0e0, #ffe0b0)' } : {}}
-                      >
-                        {a.icon} {a.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="h-px bg-gray-50" />
-
-              {/* Food */}
-              <div className="flex flex-col gap-3">
-                <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">ðŸ½ Food & Meals</p>
-                <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-xl border border-gray-100">
-                  <div>
-                    <p className="text-sm font-bold text-gray-800">Food Provided in PG</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Mess / tiffin service available</p>
-                  </div>
-                  <Switch
-                    checked={prop.foodProvided}
-                    onCheckedChange={(checked) => updatePropertyField(pIndex, 'foodProvided', checked)}
-                  />
-                </div>
-
-                {prop.foodProvided && (
-                  <div className="rounded-xl border border-orange-100 p-4 flex flex-col gap-4" style={{ background: 'linear-gradient(135deg, #fff7f0, #fff)' }}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-gray-800">Meals per Day</p>
-                        <p className="text-[11px] text-gray-400">Daily frequency</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button type="button"
-                          onClick={() => updatePropertyField(pIndex, 'mealsPerDay', Math.max(1, (prop.mealsPerDay ?? 3) - 1))}
-                          className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-600 shadow-sm">âˆ’</button>
-                        <span className="w-7 text-center text-lg font-extrabold text-orange-600">{prop.mealsPerDay ?? 3}</span>
-                        <button type="button"
-                          onClick={() => updatePropertyField(pIndex, 'mealsPerDay', (prop.mealsPerDay ?? 3) + 1)}
-                          className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white shadow-sm"
-                          style={{ background: '#FF7A00' }}>+</button>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Which Meals?</label>
-                      <div className="flex gap-2">
-                        {[
-                          { id: 'breakfast', label: 'Breakfast', icon: 'ðŸ³' },
-                          { id: 'lunch', label: 'Lunch', icon: 'ðŸ±' },
-                          { id: 'dinner', label: 'Dinner', icon: 'ðŸ›' },
-                        ].map((meal) => {
-                          const list = prop.mealsList ?? ['breakfast', 'lunch', 'dinner'];
-                          const active = list.includes(meal.id);
-                          return (
-                            <button key={meal.id} type="button"
-                              onClick={() => {
-                                const next = active
-                                  ? list.filter((item: string) => item !== meal.id)
-                                  : [...list, meal.id];
-                                updatePropertyField(pIndex, 'mealsList', next);
-                              }}
-                              className={`flex-1 py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 active:scale-95 ${
-                                active ? 'border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-500'
-                              }`}
-                              style={active ? { background: 'linear-gradient(135deg, #fff0e0, #ffe0b0)' } : {}}>
-                              <span className="text-base">{meal.icon}</span>
-                              {meal.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="h-px bg-gray-50" />
-
-              {/* Rules */}
-              <div className="flex flex-col gap-2.5">
-                <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">ðŸ“‹ Rules & Policies</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { field: 'noSmoking', label: 'No Smoking', icon: 'ðŸš­' },
-                    { field: 'noDrinking', label: 'No Drinking', icon: 'ðŸº' },
-                    { field: 'noNonVeg', label: 'Veg Only', icon: 'ðŸ¥—' },
-                  ].map((rule) => {
-                    const active = prop[rule.field];
-                    return (
-                      <button key={rule.field} type="button"
-                        onClick={() => updatePropertyField(pIndex, rule.field, !active)}
-                        className={`py-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1 active:scale-95 ${
-                          active ? 'border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-500'
-                        }`}
-                        style={active ? { background: 'linear-gradient(135deg, #fff0e0, #ffe0b0)' } : {}}>
-                        <span className="text-lg">{rule.icon}</span>
-                        {rule.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mt-1">
-                  {[
-                    { field: 'maintenanceIncluded', label: 'Maintenance Included', icon: 'ðŸ”§' },
-                    { field: 'immediateJoining', label: 'Immediate Joining', icon: 'ðŸ—ï¸' },
-                  ].map(({ field, label, icon }) => (
-                    <div key={field} className="flex items-center justify-between p-3 bg-gray-50/50 rounded-xl border border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{icon}</span>
-                        <span className="text-xs font-bold text-gray-700">{label}</span>
-                      </div>
-                      <Switch
-                        checked={prop[field]}
-                        onCheckedChange={(checked) => updatePropertyField(pIndex, field, checked)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="h-px bg-gray-50" />
-
-              {/* Rating & Notes */}
-              <div className="flex flex-col gap-3">
-                <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">â­ Intern Notes</p>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-xl border border-gray-100">
-                  <p className="text-sm font-bold text-gray-700">PG Quality Rating</p>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button key={star} type="button"
-                        onClick={() => updatePropertyField(pIndex, 'internRating', star)}
-                        className="active:scale-110 transition-transform">
-                        <Star className={`w-7 h-7 transition-colors ${star <= prop.internRating ? 'fill-orange-400 text-orange-400' : 'text-gray-200'}`} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4 flex flex-col gap-3">
-                  <p className="text-sm font-bold text-gray-700">ðŸŽ™ Voice Note</p>
-                  <div className="flex items-center gap-3">
-                    {!prop.voiceBlob && !prop.isRecording && (
-                      <button type="button" onClick={() => startRecording(pIndex)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-white rounded-xl text-sm font-bold shadow-md active:scale-95 transition-transform"
-                        style={{ background: 'linear-gradient(135deg, #FF7A00, #ff6000)' }}>
-                        <Mic className="w-4 h-4" /> Record Observations
-                      </button>
-                    )}
-                    {prop.isRecording && (
-                      <button type="button" onClick={() => stopRecording(pIndex)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold animate-pulse shadow-md">
-                        <Square className="w-4 h-4" /> Stop Recording
-                      </button>
-                    )}
-                    {prop.audioUrl && (
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-emerald-600 font-bold flex items-center gap-1.5">
-                          <Check className="w-4 h-4" /> Voice Saved âœ“
-                        </span>
-                        <button type="button" onClick={() => updatePropertyField(pIndex, 'audioUrl', null)}
-                          className="text-xs text-red-400 font-semibold bg-red-50 px-2.5 py-1 rounded-lg">
-                          Discard
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            {/* Amenities */}
+            <div className="flex flex-col gap-2">
+              <SectionLabel>Amenities</SectionLabel>
+              <div className="flex flex-wrap gap-1.5">
+                {AMENITIES.map((a) => {
+                  const selected = prop.amenities.includes(a.id);
+                  return (
+                    <button key={a.id} type="button"
+                      onClick={() => {
+                        const next = selected ? prop.amenities.filter((x: string) => x !== a.id) : [...prop.amenities, a.id];
+                        updatePropertyField(pIndex, 'amenities', next);
+                      }}
+                      className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${selected ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                      {a.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Food */}
+            <div className="flex flex-col gap-3">
+              <SectionLabel>Food</SectionLabel>
+              <div className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Food Provided</p>
+                  <p className="text-xs text-gray-400">Mess or tiffin service</p>
+                </div>
+                <Switch checked={prop.foodProvided} onCheckedChange={(v) => updatePropertyField(pIndex, 'foodProvided', v)} />
+              </div>
+              {prop.foodProvided && (
+                <div className="border border-gray-200 rounded-lg p-3 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Meals per day</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button type="button" onClick={() => updatePropertyField(pIndex, 'mealsPerDay', Math.max(1, (prop.mealsPerDay ?? 3) - 1))}
+                        className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center font-semibold text-gray-600 hover:bg-gray-50">-</button>
+                      <span className="text-sm font-bold text-gray-900 w-4 text-center">{prop.mealsPerDay ?? 3}</span>
+                      <button type="button" onClick={() => updatePropertyField(pIndex, 'mealsPerDay', (prop.mealsPerDay ?? 3) + 1)}
+                        className="w-7 h-7 rounded-md bg-gray-900 flex items-center justify-center font-semibold text-white">+</button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {[
+                      { id: 'breakfast', label: 'Breakfast' },
+                      { id: 'lunch', label: 'Lunch' },
+                      { id: 'dinner', label: 'Dinner' },
+                    ].map((meal) => {
+                      const list = prop.mealsList ?? ['breakfast', 'lunch', 'dinner'];
+                      const active = list.includes(meal.id);
+                      return (
+                        <button key={meal.id} type="button"
+                          onClick={() => {
+                            const next = active ? list.filter((x: string) => x !== meal.id) : [...list, meal.id];
+                            updatePropertyField(pIndex, 'mealsList', next);
+                          }}
+                          className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-all ${active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                          {meal.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Rules */}
+            <div className="flex flex-col gap-2">
+              <SectionLabel>Rules</SectionLabel>
+              <div className="flex gap-2">
+                {[
+                  { field: 'noSmoking', label: 'No Smoking' },
+                  { field: 'noDrinking', label: 'No Drinking' },
+                  { field: 'noNonVeg', label: 'Veg Only' },
+                ].map((rule) => (
+                  <button key={rule.field} type="button"
+                    onClick={() => updatePropertyField(pIndex, rule.field, !prop[rule.field])}
+                    className={`flex-1 py-2.5 rounded-lg border text-xs font-medium transition-all ${prop[rule.field] ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                    {rule.label}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {[
+                  { field: 'maintenanceIncluded', label: 'Maintenance Included' },
+                  { field: 'immediateJoining', label: 'Immediate Joining' },
+                ].map(({ field, label }) => (
+                  <div key={field} className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2.5">
+                    <span className="text-xs font-medium text-gray-700">{label}</span>
+                    <Switch checked={prop[field]} onCheckedChange={(v) => updatePropertyField(pIndex, field, v)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Rating */}
+            <div className="flex flex-col gap-2">
+              <SectionLabel>Intern Rating</SectionLabel>
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button key={star} type="button" onClick={() => updatePropertyField(pIndex, 'internRating', star)}>
+                    <Star className={`w-6 h-6 transition-colors ${star <= prop.internRating ? 'fill-gray-900 text-gray-900' : 'text-gray-200'}`} />
+                  </button>
+                ))}
+                <span className="text-xs text-gray-400 ml-1">({prop.internRating}/5)</span>
+              </div>
+            </div>
+
+            {/* Voice Note */}
+            <div className="flex flex-col gap-2">
+              <SectionLabel>Voice Note</SectionLabel>
+              <div className="border border-gray-200 rounded-lg p-3 flex items-center gap-3">
+                {!prop.voiceBlob && !prop.isRecording && (
+                  <button type="button" onClick={() => startRecording(pIndex)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-gray-700 transition-colors">
+                    <Mic className="w-3.5 h-3.5" /> Record
+                  </button>
+                )}
+                {prop.isRecording && (
+                  <button type="button" onClick={() => stopRecording(pIndex)}
+                    className="flex items-center gap-2 px-4 py-2 border border-red-400 text-red-500 rounded-lg text-xs font-semibold animate-pulse">
+                    <Square className="w-3.5 h-3.5" /> Stop
+                  </button>
+                )}
+                {prop.audioUrl && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-600 font-semibold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 text-green-500" /> Voice saved
+                    </span>
+                    <button type="button" onClick={() => updatePropertyField(pIndex, 'audioUrl', null)}
+                      className="text-xs text-gray-400 hover:text-red-500 transition-colors">Discard</button>
+                  </div>
+                )}
+                {!prop.voiceBlob && !prop.isRecording && !prop.audioUrl && (
+                  <p className="text-xs text-gray-400">Record field observations</p>
+                )}
+              </div>
+            </div>
+
+            {pIndex < properties.length - 1 && <Divider />}
           </div>
         ))}
 
-        {/* â”€â”€ Add Property Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Add Property */}
         <button type="button" onClick={handleAddProperty}
-          className="flex items-center justify-center gap-2 w-full h-14 border-2 border-dashed border-orange-200 text-orange-500 rounded-2xl font-bold text-sm hover:bg-orange-50 transition-all bg-white active:scale-[0.98]">
-          <Plus className="w-5 h-5" /> Add Another Property
+          className="flex items-center justify-center gap-2 w-full h-11 border border-dashed border-gray-300 text-gray-500 rounded-lg text-sm font-medium hover:border-gray-900 hover:text-gray-900 transition-all bg-white">
+          <Plus className="w-4 h-4" /> Add another property
         </button>
 
-        {/* â”€â”€ Submit CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Submit */}
         <button
           id="btn-consolidated-submit"
           type="button"
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="w-full flex items-center justify-center gap-3 h-16 rounded-2xl font-extrabold text-base text-white shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ background: isSubmitting ? '#ccc' : 'linear-gradient(135deg, #FF7A00 0%, #ff6000 100%)', boxShadow: isSubmitting ? 'none' : '0 8px 32px rgba(255, 122, 0, 0.35)' }}
+          className="w-full flex items-center justify-center gap-2 h-12 bg-gray-900 text-white rounded-lg font-semibold text-sm hover:bg-gray-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Submitting...</>
+            <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
           ) : (
-            <><Send className="w-5 h-5" /> Submit Onboarding</>
+            <><Send className="w-4 h-4" /> Submit Onboarding</>
           )}
         </button>
 
