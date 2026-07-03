@@ -18,6 +18,7 @@ async function callAppsScript<T>(
 ): Promise<AppsScriptResponse<T>> {
   const response = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
+    redirect: 'follow',
     headers: {
       'Content-Type': 'application/json',
     },

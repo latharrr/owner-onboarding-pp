@@ -41,7 +41,7 @@ import { Separator } from '@/components/ui/separator';
 export default function ConsolidatedOnboardingPage() {
   const router = useRouter();
   const isOnline = useOnlineStatus();
-  const { capture: captureGPS, latitude, longitude } = useGPS();
+  const { capture: captureGPS, latitude, longitude, status: gpsStatus, error: gpsError } = useGPS();
 
   // ── Onboarding State ──────────────────────────────────────────
   const [internName, setInternName] = useState('');
@@ -521,9 +521,35 @@ export default function ConsolidatedOnboardingPage() {
               </button>
             )}
 
-            <h2 className="font-extrabold text-gray-900 text-base flex items-center gap-2">
-              🏠 Property #{pIndex + 1} details
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-extrabold text-gray-900 text-base flex items-center gap-2">
+                🏠 Property #{pIndex + 1} Details
+              </h2>
+              {pIndex === 0 && (
+                <div className="flex items-center gap-1">
+                  {gpsStatus === 'capturing' && (
+                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full animate-pulse">
+                      📡 GPS Loading...
+                    </span>
+                  )}
+                  {gpsStatus === 'captured' && (
+                    <span className="text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                      📍 GPS Active ({latitude?.toFixed(4)}, {longitude?.toFixed(4)})
+                    </span>
+                  )}
+                  {gpsStatus === 'denied' && (
+                    <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full" title={gpsError}>
+                      ⚠️ GPS Blocked
+                    </span>
+                  )}
+                  {gpsStatus === 'unavailable' && (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full" title={gpsError}>
+                      ⚠️ GPS Offline
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* PG Identity */}
             <div className="grid grid-cols-2 gap-3">
