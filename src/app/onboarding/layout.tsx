@@ -51,7 +51,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
             </div>
           )}
         </div>
-        <ProgressBar value={progress} />
+        {pathname !== '/onboarding' && <ProgressBar value={progress} />}
       </div>
 
       {/* Page content */}

@@ -386,22 +386,52 @@ export default function ConsolidatedOnboardingPage() {
     }
   };
 
+  // Calculate dynamic progress
+  const getProgress = () => {
+    let score = 0;
+    const total = 7;
+    
+    if (ownerName.trim()) score++;
+    if (/^[6-9]\d{9}$/.test(ownerPhone)) score++;
+    if (ownerAddress.trim()) score++;
+    
+    if (properties.length > 0) {
+      const p = properties[0];
+      if (p.name.trim()) score++;
+      if (p.locality.trim()) score++;
+      if (/^\d{6}$/.test(p.pincode)) score++;
+      if (p.address.trim()) score++;
+    }
+    
+    return Math.round((score / total) * 100);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Top sticky status bar */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center">
-            <span className="text-white font-black text-xs">P</span>
+      {/* Top sticky status bar with built-in dynamic progress */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center">
+              <span className="text-white font-black text-xs">P</span>
+            </div>
+            <span className="font-bold text-gray-900 text-sm">Picapool Express</span>
           </div>
-          <span className="font-bold text-gray-900 text-sm">Picapool Express</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
+              {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+              {isOnline ? 'Online' : 'Offline'}
+            </div>
+            <span className="text-xs text-gray-400 font-medium">Intern: {internName}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
-            {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-            {isOnline ? 'Online' : 'Offline Mode'}
-          </div>
-          <span className="text-xs text-gray-400 font-medium">Intern: {internName}</span>
+        
+        {/* Dynamic progress bar */}
+        <div className="h-1 bg-brand-light w-full overflow-hidden">
+          <div
+            className="h-full bg-brand transition-all duration-300 ease-out"
+            style={{ width: `${getProgress()}%` }}
+          />
         </div>
       </div>
 
