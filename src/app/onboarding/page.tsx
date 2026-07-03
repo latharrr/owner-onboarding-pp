@@ -62,11 +62,11 @@ export default function ConsolidatedOnboardingPage() {
   const [startedAt, setStartedAt] = useState('');
 
   // Owner details (Pre-filled defaults)
-  const [ownerName, setOwnerName] = useState('New Owner');
+  const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerAltPhone, setOwnerAltPhone] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
-  const [ownerAddress, setOwnerAddress] = useState('Local Locality');
+  const [ownerAddress, setOwnerAddress] = useState('');
   const [visitStatus, setVisitStatus] = useState<VisitStatus>('visited');
 
   // Properties array
@@ -155,11 +155,11 @@ export default function ConsolidatedOnboardingPage() {
   function createDefaultPropertyState() {
     return {
       propertyId: generateId(),
-      name: 'Picapool PG',
-      address: 'Koramangala, Bangalore',
-      locality: 'Koramangala',
-      city: 'Bangalore',
-      pincode: '560034',
+      name: '',
+      address: '',
+      locality: '',
+      city: '',
+      pincode: '',
       googleMapsLink: '',
       pgType: 'unisex',
       totalRooms: 10,

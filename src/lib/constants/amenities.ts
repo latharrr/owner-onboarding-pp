@@ -19,11 +19,13 @@ export const AMENITIES: AmenityOption[] = [
   { id: 'furnished', label: 'Furnished', icon: '🛋️', category: 'comfort' },
   { id: 'attached_bathroom', label: 'Attached Bath', icon: '🚽', category: 'comfort' },
   { id: 'pantry', label: 'Pantry', icon: '🍽️', category: 'comfort' },
+  { id: 'medical_facilities', label: 'Doctor on Call', icon: '🩺', category: 'comfort' },
   { id: 'washing_machine', label: 'Washing Machine', icon: '🫧', category: 'lifestyle' },
   { id: 'laundry', label: 'Laundry Service', icon: '👕', category: 'lifestyle' },
   // Security
   { id: 'cctv', label: 'CCTV', icon: '📹', category: 'security' },
-  { id: 'security_guard', label: 'Security Guard', icon: '💂', category: 'security' },
+  { id: 'security_guard', label: 'Robust Security', icon: '🛡️', category: 'security' },
+  { id: 'warden_support', label: 'Warden Support', icon: '👮', category: 'security' },
   { id: 'biometric', label: 'Biometric', icon: '🔐', category: 'security' },
   { id: 'lockers', label: 'Lockers', icon: '🔒', category: 'security' },
   // Utilities
@@ -34,9 +36,9 @@ export const AMENITIES: AmenityOption[] = [
   { id: 'parking_four_wheeler', label: '4-Wheeler Parking', icon: '🚗', category: 'utilities' },
   // Lifestyle
   { id: 'gym', label: 'Gym', icon: '🏋️', category: 'lifestyle' },
-  { id: 'recreation_room', label: 'Recreation Room', icon: '🎮', category: 'lifestyle' },
-  { id: 'housekeeping', label: 'Housekeeping', icon: '🧹', category: 'lifestyle' },
-  { id: 'study_room', label: 'Study Room', icon: '📚', category: 'lifestyle' },
+  { id: 'recreation_room', label: 'Indoor Games', icon: '🎯', category: 'lifestyle' },
+  { id: 'housekeeping', label: 'Daily Housekeeping', icon: '🧹', category: 'lifestyle' },
+  { id: 'study_room', label: 'Study Friendly', icon: '🤫', category: 'lifestyle' },
   { id: 'elevator', label: 'Elevator / Lift', icon: '🛗', category: 'comfort' },
   { id: 'terrace', label: 'Terrace', icon: '🏡', category: 'lifestyle' },
 ];
