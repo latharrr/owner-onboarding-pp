@@ -12,3 +12,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .vercel
+
+# clasp (Google Apps Script CLI) — machine/account-specific, never commit
+.clasp.json
+.clasprc.json
