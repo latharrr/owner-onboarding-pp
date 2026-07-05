@@ -55,11 +55,20 @@ const HEADERS = {
     'internRating', 'followUpRequired', 'voiceNoteKey',
     'photoUrls', 'videoUrls', 'documentUrls',
     'createdAt', 'updatedAt',
+    // Appended by the field-fix spec — always add new columns at the END so
+    // existing sheets (with rows already written under the old headers)
+    // never get their columns shifted/misaligned.
+    'lockInPeriodLabel', 'noticePeriodLabel',
+    'electricityMeterType', 'avgElectricityBillPerBed',
+    'foodProvision', 'mealPreference',
+    'depositAutoFromMaxRent',
   ],
   ROOM_CONFIGS: [
     'configId', 'propertyId', 'propertyDisplayId', 'ownerDisplayId',
     'type', 'acType', 'furnishing', 'count', 'rentPerBed', 'deposit', 'lockInPeriod',
     'createdAt',
+    // Appended — range-based rent (owners quote a range, not an exact price)
+    'rentMin', 'rentMax',
   ],
   SUBMISSIONS: [
     'submissionId', 'displayId', 'ownerId', 'ownerDisplayId',
@@ -204,6 +213,10 @@ function submitOnboarding(payload) {
       (prop.videoUrls || []).join(', '),
       (prop.documentUrls || []).join(', '),
       now, now,
+      prop.lockInPeriodLabel || '', prop.noticePeriodLabel || '',
+      prop.electricityMeterType || '', prop.avgElectricityBillPerBed || '',
+      prop.foodProvision || '', prop.mealPreference || '',
+      prop.depositAutoFromMaxRent ?? '',
     ];
     propSheet.appendRow(propRow);
 
@@ -213,6 +226,7 @@ function submitOnboarding(payload) {
         rc.configId, prop.propertyId, propDisplayId, ownerDisplayId,
         rc.type, rc.acType, rc.furnishing, rc.count, rc.rentPerBed, rc.deposit, rc.lockInPeriod || 1,
         now,
+        rc.rentMin || '', rc.rentMax || '',
       ];
       roomSheet.appendRow(rcRow);
     });

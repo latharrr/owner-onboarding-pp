@@ -33,6 +33,12 @@ export type GuestPolicy = 'allowed' | 'not_allowed' | 'daytime_only';
 // ── Electricity Billing ──────────────────────────────────────
 export type ElectricityBilling = 'included' | 'fixed' | 'metered';
 
+// ── Electricity Meter (student-facing: prepaid vs postpaid) ──
+export type ElectricityMeterType = 'prepaid' | 'postpaid' | 'included';
+
+// ── Meal Preference (veg / non-veg / egg) ────────────────────
+export type MealPreference = 'veg_only' | 'veg_non_veg' | 'veg_egg';
+
 // ── GPS Coordinates ──────────────────────────────────────────
 export interface GPSCoordinates {
   latitude: number;
@@ -74,6 +80,8 @@ export interface RoomConfig {
   furnishing: FurnishingType;
   count: number;
   rentPerBed: number;
+  rentMin?: number;        // range-based rent (owners quote ranges, not exact prices)
+  rentMax?: number;
   deposit: number;
   lockInPeriod?: number;   // months
 }
@@ -101,17 +109,23 @@ export interface Property {
 
   // Room Configurations
   roomConfigs: RoomConfig[];
+  // Range-based room type cards (replaces exact per-room pricing —
+  // owners quote ranges, not exact prices per bed)
+  roomTypeCards?: { key: string; enabled: boolean; rentMin: number; rentMax: number; count: number }[];
+  furnishing?: FurnishingType; // single property-level default, applied to all room types
 
   // Amenities
   amenities: string[];
 
   // Food
+  foodProvision?: 'no_food' | 'mess' | 'tiffin' | 'cooking_allowed';
   foodProvided: boolean;
   mealType: MealType;
   mealIncluded: boolean;
   mealCost?: number;
   mealsPerDay?: number;
   mealsList?: string[];
+  mealPreference?: MealPreference;
 
   // Rules
   noSmoking: boolean;
@@ -120,13 +134,19 @@ export interface Property {
   guestPolicy: GuestPolicy;
   lockInPeriod: number;    // months
   noticePeriod: number;    // months
+  // Human-readable labels for the standalone chip pickers (e.g. "3 months", "15 days")
+  lockInPeriodLabel?: string;
+  noticePeriodLabel?: string;
 
   // Financials
   maintenanceIncluded: boolean;
   electricityIncluded: boolean;
   electricityBilling: ElectricityBilling;
   fixedElectricityAmount?: number;
+  electricityMeterType?: ElectricityMeterType;
+  avgElectricityBillPerBed?: number;
   securityDeposit: number;
+  depositAutoFromMaxRent?: boolean;
   tokenAmount?: number;
 
   // Availability
