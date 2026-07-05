@@ -50,3 +50,16 @@ export const AMENITY_CATEGORIES = [
   { id: 'utilities', label: 'Utilities' },
   { id: 'lifestyle', label: 'Lifestyle' },
 ] as const;
+
+// Most PGs have these — pre-selected by default so the executive only
+// has to tap to deselect what's missing, not tap to add what's common.
+export const COMMON_AMENITY_IDS: string[] = [
+  'wifi',
+  'power_backup',
+  'geyser',
+  'cctv',
+  'security_guard',
+  'laundry',
+  'housekeeping',
+  'study_room',
+];
