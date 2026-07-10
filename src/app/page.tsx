@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowRight, MapPin, Zap, Shield } from 'lucide-react';
+import { ArrowRight, MapPin, Zap, Shield, Sparkles } from 'lucide-react';
 import { useOnboardingStore } from '@/lib/store/onboarding-store';
 import { useGPS } from '@/lib/hooks/useGPS';
 import { Input } from '@/components/ui/input';
@@ -145,6 +145,23 @@ export default function WelcomePage() {
             Resume unfinished session →
           </button>
         )}
+
+        {/* AI PG Discovery — separate feature for prospective tenants */}
+        <button
+          id="btn-discover"
+          type="button"
+          onClick={() => router.push('/discover')}
+          className="mt-8 w-full flex items-center gap-3 p-4 rounded-2xl border border-gray-100 hover:border-brand/40 text-left transition-colors"
+        >
+          <div className="w-10 h-10 rounded-xl bg-brand-light flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5 text-brand" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm">Find a PG with AI</p>
+            <p className="text-xs text-gray-400 truncate">Search in plain English — &ldquo;Girls PG under ₹12,000 near North Campus&rdquo;</p>
+          </div>
+          <ArrowRight className="w-4 h-4 text-gray-300 shrink-0" />
+        </button>
       </div>
 
       {/* Footer */}

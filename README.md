@@ -136,12 +136,17 @@ src/
 │   ├── success/       # Submission confirmation
 │   ├── dashboard/     # Intern activity dashboard
 │   ├── search/        # Search owners/properties
-│   └── api/           # API routes (submit, check-duplicate, analytics)
+│   ├── discover/      # AI PG Discovery (search, property details, compare)
+│   └── api/
+│       ├── discover/  # AI Discovery API (search, property, refresh)
+│       └── ...        # submit, check-duplicate, analytics
 ├── components/
 │   ├── onboarding/    # Step-specific components
+│   ├── discover/      # AI Discovery UI (PropertyCard, CompareBar, etc.)
 │   └── ui/            # shadcn/ui components
 ├── lib/
 │   ├── apps-script/   # Apps Script client
+│   ├── discover/      # Data join/cache, NL filter engine, Groq client
 │   ├── store/         # Zustand store + offline queue
 │   ├── hooks/         # Custom hooks
 │   ├── constants/     # Amenities, room types, etc.
@@ -162,6 +167,37 @@ apps-script/
 | `APPS_SCRIPT_WEB_APP_URL` | ✅ | Your Apps Script Web App URL |
 | `APPS_SCRIPT_SECRET` | ✅ | Shared secret for auth |
 | `NEXT_PUBLIC_APP_URL` | Optional | Your Vercel deployment URL |
+| `GROQ_API_KEY` | ✅ (for AI Discovery) | Server-side only — powers `/discover` |
+| `GROQ_MODEL` | Optional | Defaults to `llama-3.3-70b-versatile` |
+
+---
+
+## AI PG Discovery
+
+A second, independent feature reachable from the home page (**"Find a PG with AI"** → `/discover`) for prospective tenants — separate from the intern onboarding flow above. It lets anyone search the same Owners/Properties/RoomConfigurations sheet using natural language instead of manual filters (e.g. *"Girls PG under ₹12,000 near North Campus"*, *"Cheapest PG in Vijay Nagar"*, *"Compare Sunrise PG vs Green Valley PG"*).
+
+**How it works — no vector DB, no embeddings:**
+
+```
+Google Sheet (Apps Script GET_ALL_DATA)
+  → joined into Owner → Property → RoomConfig objects (src/lib/discover/data.ts, 2-min in-memory cache)
+  → query parsed into structured filters with plain regex/keyword rules (src/lib/discover/filters.ts)
+  → filtered/ranked in JS — only the matches are ever sent onward
+  → compact, privacy-minimized JSON (no phone/email/address) sent to Groq with a fixed system prompt (src/lib/discover/groq.ts)
+  → streamed answer + matched property cards rendered on /discover
+```
+
+The system prompt instructs the model to answer **only** from the supplied data and to say so explicitly when something isn't available — it never sees the full spreadsheet or raw sheet rows, only the already-filtered slice for the current query.
+
+**Setup:**
+1. Re-deploy `apps-script/Code.gs` (adds the read-only `GET_ALL_DATA` action) — same deployment steps as above.
+2. Get a free key at [console.groq.com](https://console.groq.com) and add it to `.env.local`:
+   ```env
+   GROQ_API_KEY=your_groq_api_key_here
+   ```
+3. Visit `/discover`.
+
+**Pages:** `/discover` (search), `/discover/property/[id]` (details + AI summary), `/discover/compare?ids=PRP-001,PRP-002` (side-by-side compare).
 
 ---
 

@@ -102,6 +102,9 @@ function doPost(e) {
       case 'SAVE_DRAFT':
         return jsonResponse(saveDraft(body.sessionId, body.step, body.timestamp));
 
+      case 'GET_ALL_DATA':
+        return jsonResponse(getAllData());
+
       default:
         return jsonResponse({ success: false, error: `Unknown action: ${action}` }, 400);
     }
@@ -256,6 +259,54 @@ function submitOnboarding(payload) {
       createdAt: now,
     },
   };
+}
+
+// ── Read-only export for the AI Discovery feature ────────────
+// Returns every row of Owners / Properties / RoomConfigurations as
+// plain objects (header row used as keys). Read-only — never
+// mutates the sheet. Submissions is intentionally excluded (it's
+// internal operational metadata, not shown to end users).
+function getAllData() {
+  const owners = readSheetAsObjects(SHEETS.OWNERS, HEADERS.OWNERS);
+  const properties = readSheetAsObjects(SHEETS.PROPERTIES, HEADERS.PROPERTIES);
+  const roomConfigs = readSheetAsObjects(SHEETS.ROOM_CONFIGS, HEADERS.ROOM_CONFIGS);
+
+  return {
+    success: true,
+    data: {
+      owners,
+      properties,
+      roomConfigs,
+      fetchedAt: new Date().toISOString(),
+    },
+  };
+}
+
+function readSheetAsObjects(sheetName, fallbackHeaders) {
+  try {
+    const sheet = getOrCreateSheet(sheetName, fallbackHeaders);
+    const range = sheet.getDataRange();
+    const values = range.getValues();
+    if (values.length < 2) return [];
+
+    const headers = values[0];
+    const rows = [];
+    for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+      // Skip fully blank rows
+      if (row.every((cell) => cell === '' || cell === null)) continue;
+      const obj = {};
+      headers.forEach((h, j) => {
+        if (!h) return;
+        const cell = row[j];
+        obj[h] = cell instanceof Date ? cell.toISOString() : cell;
+      });
+      rows.push(obj);
+    }
+    return rows;
+  } catch (err) {
+    return [];
+  }
 }
 
 // ── Save draft ────────────────────────────────────────────────

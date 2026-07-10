@@ -2,9 +2,10 @@
 // Picapool Apps Script Client
 // ============================================================
 import type { SubmissionPayload, SubmissionResult, DuplicateCheckResult } from '@/types/onboarding';
+import type { RawDiscoveryData } from '@/types/discovery';
 
-const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_WEB_APP_URL!;
-const APPS_SCRIPT_SECRET = process.env.APPS_SCRIPT_SECRET!;
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_WEB_APP_URL;
+const APPS_SCRIPT_SECRET = process.env.APPS_SCRIPT_SECRET;
 
 interface AppsScriptResponse<T> {
   success: boolean;
@@ -16,6 +17,12 @@ async function callAppsScript<T>(
   action: string,
   payload: Record<string, unknown>
 ): Promise<AppsScriptResponse<T>> {
+  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_SECRET) {
+    throw new Error(
+      'Apps Script is not configured — set APPS_SCRIPT_WEB_APP_URL and APPS_SCRIPT_SECRET in .env.local'
+    );
+  }
+
   const response = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     redirect: 'follow',
@@ -73,4 +80,17 @@ export async function saveDraft(sessionId: string, step: string): Promise<void> 
   callAppsScript('SAVE_DRAFT', { sessionId, step, timestamp: new Date().toISOString() }).catch(
     () => {}
   );
+}
+
+/**
+ * Read-only export of Owners/Properties/RoomConfigurations for the
+ * AI Discovery feature. Submissions are excluded — they're internal
+ * operational metadata, never shown to end users.
+ */
+export async function fetchAllDiscoveryData(): Promise<RawDiscoveryData> {
+  const result = await callAppsScript<RawDiscoveryData>('GET_ALL_DATA', {});
+  if (!result.success || !result.data) {
+    throw new Error(result.error ?? 'Failed to load data from Apps Script');
+  }
+  return result.data;
 }
