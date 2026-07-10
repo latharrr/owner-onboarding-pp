@@ -45,6 +45,7 @@ export interface RoomTypeCardDef {
 
 export const ROOM_TYPE_CARD_DEFS: RoomTypeCardDef[] = [
   { key: 'single_ac', label: 'Single AC', occupancyType: 'single', acType: 'ac' },
+  { key: 'single_non_ac', label: 'Single Non-AC', occupancyType: 'single', acType: 'non_ac' },
   { key: 'double_ac', label: 'Double AC', occupancyType: 'double', acType: 'ac' },
   { key: 'double_non_ac', label: 'Double Non-AC', occupancyType: 'double', acType: 'non_ac' },
   { key: 'triple_ac', label: 'Triple AC', occupancyType: 'triple', acType: 'ac' },
@@ -80,4 +81,14 @@ export const NOTICE_PERIOD_OPTIONS = [
   { id: '15_days', label: '15 days', days: 15 },
   { id: '1_month', label: '1 month', days: 30 },
   { id: 'none', label: 'None', days: 0 },
+];
+
+// Security deposit is quoted by owners as a number of months' rent
+// ("2 months deposit"), not a raw rupee figure — so the executive picks a
+// month multiple here and the rupee amount is derived from the max rent.
+export const SECURITY_DEPOSIT_OPTIONS = [
+  { id: '1_month', label: '1 month', months: 1 },
+  { id: '2_months', label: '2 months', months: 2 },
+  { id: '3_months', label: '3 months', months: 3 },
+  { id: '6_months', label: '6 months', months: 6 },
 ];

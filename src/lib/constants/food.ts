@@ -48,7 +48,7 @@ export const MEAL_PREFERENCE_OPTIONS = [
   { id: 'veg_egg', label: 'Veg + Egg' },
 ];
 
-export const MEAL_COUNT_OPTIONS = [2, 3];
+export const MEAL_COUNT_OPTIONS = [2, 3, 4];
 
 // Food charge tiers — matches how owners quote a flat monthly add-on,
 // not a freeform number.

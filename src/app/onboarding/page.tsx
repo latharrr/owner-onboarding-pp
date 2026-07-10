@@ -24,7 +24,7 @@ import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 import { getDeviceInfo } from '@/lib/utils/device';
 import { generateId, generateSessionId } from '@/lib/utils/ids';
 import { AMENITIES, COMMON_AMENITY_IDS } from '@/lib/constants/amenities';
-import { FURNISHING_TYPES, ROOM_TYPE_CARD_DEFS, DEFAULT_ROOM_TYPE_CARDS, LOCK_IN_OPTIONS, NOTICE_PERIOD_OPTIONS, type RoomTypeCardState } from '@/lib/constants/roomTypes';
+import { FURNISHING_TYPES, ROOM_TYPE_CARD_DEFS, DEFAULT_ROOM_TYPE_CARDS, LOCK_IN_OPTIONS, NOTICE_PERIOD_OPTIONS, SECURITY_DEPOSIT_OPTIONS, type RoomTypeCardState } from '@/lib/constants/roomTypes';
 import { NORTH_CAMPUS_LOCALITIES, LAST_LOCALITY_STORAGE_KEY } from '@/lib/constants/localities';
 import { ELECTRICITY_METER_OPTIONS, AVG_ELECTRICITY_BILL_PRESETS } from '@/lib/constants/electricity';
 import { FOOD_PROVISION_OPTIONS, MEAL_PREFERENCE_OPTIONS, MEAL_COUNT_OPTIONS, FOOD_CHARGE_PRESETS } from '@/lib/constants/food';
@@ -200,7 +200,7 @@ export default function ConsolidatedOnboardingPage() {
       electricityMeterType: undefined as ElectricityMeterType | undefined,
       avgElectricityBillPerBed: 0,
       fixedElectricityAmount: 0,
-      depositAutoFromMaxRent: true,
+      securityDepositLabel: '1_month',
       securityDeposit: 0,
       tokenAmount: 1000,
       availableFrom: new Date().toISOString().split('T')[0],
@@ -231,12 +231,16 @@ export default function ConsolidatedOnboardingPage() {
     setProperties(updated);
   };
 
-  // Max rent across all enabled room type cards — drives deposit auto-fill.
+  // Max rent across all enabled room type cards — drives deposit calculation.
   const getMaxRent = (prop: any) => {
     const enabled = (prop.roomTypeCards as RoomTypeCardState[]).filter((c) => c.enabled);
     if (enabled.length === 0) return 0;
     return Math.max(...enabled.map((c) => c.rentMax || 0));
   };
+
+  // Security deposit is quoted in months of rent, not a raw rupee figure.
+  const getDepositMonths = (prop: any) =>
+    SECURITY_DEPOSIT_OPTIONS.find((o) => o.id === prop.securityDepositLabel)?.months ?? 1;
 
   const updateRoomTypeCard = (propIndex: number, cardKey: string, data: Partial<RoomTypeCardState>) => {
     const updated = [...properties];
@@ -244,9 +248,7 @@ export default function ConsolidatedOnboardingPage() {
       c.key === cardKey ? { ...c, ...data } : c
     );
     updated[propIndex] = { ...updated[propIndex], roomTypeCards: cards };
-    if (updated[propIndex].depositAutoFromMaxRent) {
-      updated[propIndex].securityDeposit = getMaxRent(updated[propIndex]);
-    }
+    updated[propIndex].securityDeposit = getDepositMonths(updated[propIndex]) * getMaxRent(updated[propIndex]);
     setProperties(updated);
   };
 
@@ -254,6 +256,13 @@ export default function ConsolidatedOnboardingPage() {
     const prop = properties[propIndex];
     const card = (prop.roomTypeCards as RoomTypeCardState[]).find((c) => c.key === cardKey);
     updateRoomTypeCard(propIndex, cardKey, { enabled: !card?.enabled });
+  };
+
+  const handleSecurityDepositSelect = (propIndex: number, label: string) => {
+    const updated = [...properties];
+    updated[propIndex] = { ...updated[propIndex], securityDepositLabel: label };
+    updated[propIndex].securityDeposit = getDepositMonths(updated[propIndex]) * getMaxRent(updated[propIndex]);
+    setProperties(updated);
   };
 
   const handleLocalitySelect = (propIndex: number, localityId: string) => {
@@ -351,7 +360,7 @@ export default function ConsolidatedOnboardingPage() {
           maintenanceIncluded: p.maintenanceIncluded, electricityIncluded: p.electricityMeterType === 'included',
           electricityBilling: p.electricityBilling, fixedElectricityAmount: p.fixedElectricityAmount,
           electricityMeterType: p.electricityMeterType, avgElectricityBillPerBed: p.avgElectricityBillPerBed,
-          securityDeposit: p.securityDeposit, depositAutoFromMaxRent: p.depositAutoFromMaxRent, tokenAmount: p.tokenAmount,
+          securityDeposit: p.securityDeposit, securityDepositLabel: p.securityDepositLabel, tokenAmount: p.tokenAmount,
           availableFrom: p.availableFrom, currentVacancies: p.currentVacancies,
           immediateJoining: p.immediateJoining, internRating: p.internRating,
           followUpRequired: p.followUpRequired, voiceNoteBase64,
@@ -568,20 +577,15 @@ export default function ConsolidatedOnboardingPage() {
                   { field: 'totalRooms', label: 'Total Rooms' },
                   { field: 'totalBeds', label: 'Total Beds' },
                 ].map(({ field, label }) => (
-                  <div key={field} className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2.5">
-                    <span className="text-sm text-gray-600">{label}</span>
-                    <div className="flex items-center gap-3">
-                      <button type="button" onClick={() => updatePropertyField(pIndex, field, Math.max(1, prop[field] - 1))}
-                        className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center text-gray-600 font-semibold text-base hover:bg-gray-50 transition-colors">
-                        -
-                      </button>
-                      <span className="text-sm font-bold text-gray-900 w-6 text-center">{prop[field]}</span>
-                      <button type="button" onClick={() => updatePropertyField(pIndex, field, prop[field] + 1)}
-                        className="w-7 h-7 rounded-md bg-gray-900 border border-gray-900 flex items-center justify-center text-white font-semibold text-base transition-colors">
-                        +
-                      </button>
-                    </div>
-                  </div>
+                  <Field key={field} label={label}>
+                    <TextInput
+                      value={prop[field] === 0 ? '' : String(prop[field])}
+                      onChange={(v) => updatePropertyField(pIndex, field, Number(v.replace(/[^0-9]/g, '')) || 0)}
+                      placeholder="0"
+                      type="number"
+                      inputMode="numeric"
+                    />
+                  </Field>
                 ))}
               </div>
             </div>
@@ -642,28 +646,18 @@ export default function ConsolidatedOnboardingPage() {
                 ))}
               </div>
 
-              {/* Deposit */}
-              <div className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2.5 mt-1">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Security Deposit</p>
-                  <p className="text-xs text-gray-400">{prop.depositAutoFromMaxRent ? `Same as max rent (₹${getMaxRent(prop)})` : 'Custom amount'}</p>
+              {/* Deposit — quoted in months of rent, not a raw rupee figure */}
+              <div className="flex flex-col gap-1.5 border border-gray-200 rounded-lg px-3 py-2.5 mt-1">
+                <p className="text-sm font-medium text-gray-900">Security Deposit</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SECURITY_DEPOSIT_OPTIONS.map((o) => (
+                    <button key={o.id} type="button" onClick={() => handleSecurityDepositSelect(pIndex, o.id)}
+                      className={`px-2.5 py-1 rounded-md border text-[11px] font-medium transition-all ${prop.securityDepositLabel === o.id ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {o.label}
+                    </button>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  {!prop.depositAutoFromMaxRent && (
-                    <input type="number" value={prop.securityDeposit || ''}
-                      onChange={(e) => updatePropertyField(pIndex, 'securityDeposit', Number(e.target.value))}
-                      className="h-8 w-24 rounded-md border border-gray-200 px-1.5 text-xs text-center font-semibold bg-white text-gray-900 focus:outline-none focus:border-gray-900" />
-                  )}
-                  <button type="button"
-                    onClick={() => {
-                      const auto = !prop.depositAutoFromMaxRent;
-                      updatePropertyField(pIndex, 'depositAutoFromMaxRent', auto);
-                      if (auto) updatePropertyField(pIndex, 'securityDeposit', getMaxRent(prop));
-                    }}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${prop.depositAutoFromMaxRent ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200'}`}>
-                    {prop.depositAutoFromMaxRent ? 'Auto' : 'Custom'}
-                  </button>
-                </div>
+                <p className="text-xs text-gray-400">≈ ₹{getDepositMonths(prop) * getMaxRent(prop)} ({getDepositMonths(prop)} × max rent ₹{getMaxRent(prop)})</p>
               </div>
 
               {/* Lock-in + Notice (standalone — one policy for the whole PG) */}

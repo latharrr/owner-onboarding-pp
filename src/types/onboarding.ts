@@ -146,7 +146,7 @@ export interface Property {
   electricityMeterType?: ElectricityMeterType;
   avgElectricityBillPerBed?: number;
   securityDeposit: number;
-  depositAutoFromMaxRent?: boolean;
+  securityDepositLabel?: string; // e.g. "2_months" — how the deposit was quoted, in months of rent
   tokenAmount?: number;
 
   // Availability

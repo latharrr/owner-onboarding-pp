@@ -19,6 +19,8 @@ export const NORTH_CAMPUS_LOCALITIES: LocalityOption[] = [
   { id: 'patel_chest', label: 'Patel Chest', pincode: '110007' },
   { id: 'hudson_lane', label: 'Hudson Lane', pincode: '110009' },
   { id: 'mukherjee_nagar', label: 'Mukherjee Nagar', pincode: '110009' },
+  { id: 'roop_nagar', label: 'Roop Nagar', pincode: '110007' },
+  { id: 'malkaganj', label: 'Malkaganj', pincode: '110007' },
 ];
 
 export const LAST_LOCALITY_STORAGE_KEY = 'picapool-last-locality';
